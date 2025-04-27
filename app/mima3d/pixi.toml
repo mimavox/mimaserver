@@ -2,7 +2,7 @@
 authors = ["Andreas Chatzopoulos <andreas.chatzopoulos@gmail.com>"]
 channels = ["conda-forge"]
 name = "mima3d"
-platforms = ["linux-64"]
+platforms = ["linux-64", "osx-arm64"]
 version = "0.1.0"
 
 [tasks]
