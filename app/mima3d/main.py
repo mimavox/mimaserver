@@ -1,4 +1,5 @@
 import time
+import glob
 
 from typing import Annotated
 from fastapi import FastAPI, File, UploadFile
@@ -32,14 +33,19 @@ async def create_file(file: Annotated[bytes, File()]):
 # Upload pov-image (assumes png) as obs
 @app.post("/obs")
 async def uploadfile(file: UploadFile):
-    print("POST received")
     try:        
         timestamp = time.strftime('%Y-%m-%d_%H.%M')
         filename = timestamp + ".png"
         file_path = f"obs/{filename}"    
         with open(file_path, "wb") as f:
             f.write(file.file.read())
-            return {"message": "File saved successfully"}
+            return {"message": "obs saved successfully"}
     except Exception as e:
         print("message:", e.args)
-        
+
+# Get the filename of the latest file in /obs
+def latest_obs_on_file() -> str:
+    list_of_files = glob.glob("./obs/*")
+    latest_file = max(list_of_files, key=os.path.getctime)
+    return latest_file
+
