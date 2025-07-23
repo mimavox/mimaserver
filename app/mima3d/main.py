@@ -30,10 +30,11 @@ async def create_file(file: Annotated[bytes, File()]):
     return {"file_size": len(file)}
 
 # Upload pov-image (assumes png) as obs
-@app.post("/obs/")
+@app.post("/obs")
 async def uploadfile(file: UploadFile):
+    print("POST received")
     try:        
-        timestamp = time.strftime('%Y-%m-%d-%H.%M')
+        timestamp = time.strftime('%Y-%m-%d_%H.%M')
         filename = timestamp + ".png"
         file_path = f"obs/{filename}"    
         with open(file_path, "wb") as f:
