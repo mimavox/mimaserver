@@ -12,6 +12,8 @@ from dotenv import load_dotenv
 import os
 load_dotenv()
 
+from actions import *
+
 # Working setup for openai calls. Don't forget .env in FastAPI root.
 openai_provider = OpenAIProvider(api_key=os.getenv("OPENAI_API_KEY"))
 model = OpenAIModel(model_name="gpt-4o", provider=openai_provider)
@@ -21,14 +23,20 @@ app = FastAPI()
 
 # http://triathlon.itit.gu.se:8001 eller
 # http://localhost:8001
-@app.get("/")
+
+
+
+@app.get("/", response_model=Actions)
 async def root():
+    response = {"left": False, "right": True, "forward": False, "backward": False, "jump": True}
+    return response
+
+
+
+@app.get("/llm")
+async def llm():
     result = await agent.run('What it the capital of Sweden?')  
     return {"answer": result.output}
-
-@app.post("/files/")
-async def create_file(file: Annotated[bytes, File()]):
-    return {"file_size": len(file)}
 
 # Upload pov-image (assumes png) as obs
 @app.post("/obs")
