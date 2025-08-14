@@ -1,8 +1,7 @@
 import time
 import glob
 
-from typing import Annotated
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, UploadFile
 
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
@@ -18,27 +17,32 @@ from actions import *
 openai_provider = OpenAIProvider(api_key=os.getenv("OPENAI_API_KEY"))
 model = OpenAIModel(model_name="gpt-4o", provider=openai_provider)
 agent = Agent(model)
+
+# Get the filename of the latest file in /obs
+def latest_obs_on_file() -> str:
+    list_of_files = glob.glob("./obs/*")
+    latest_file = max(list_of_files, key=os.path.getctime)
+    return latest_file
    
 app = FastAPI()
 
 # http://triathlon.itit.gu.se:8001 eller
 # http://localhost:8001
 
-
-
+# Test
 @app.get("/", response_model=Actions)
 async def root():
-    response = {"left": False, "right": True, "forward": False, "backward": False, "jump": True}
+    response = Actions()
+    response.right = True
     return response
 
-
-
+# Send POV to LLM for description
 @app.get("/llm")
 async def llm():
     result = await agent.run('What it the capital of Sweden?')  
     return {"answer": result.output}
 
-# Upload pov-image (assumes png) as obs
+# Upload POV-image (assumes png) as OBS
 @app.post("/obs")
 async def uploadfile(file: UploadFile):
     try:        
@@ -50,10 +54,3 @@ async def uploadfile(file: UploadFile):
             return {"message": "obs saved successfully"}
     except Exception as e:
         print("message:", e.args)
-
-# Get the filename of the latest file in /obs
-def latest_obs_on_file() -> str:
-    list_of_files = glob.glob("./obs/*")
-    latest_file = max(list_of_files, key=os.path.getctime)
-    return latest_file
-
