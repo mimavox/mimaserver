@@ -1,33 +1,46 @@
 import time
 import glob
+import os
 
-from fastapi import FastAPI, UploadFile
-
-from pydantic_ai import Agent
+from fastapi import FastAPI, UploadFile, HTTPException
+from pydantic_ai import Agent, BinaryContent
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
-
 from dotenv import load_dotenv
-import os
-load_dotenv()
 
 from actions import *
 
-# Working setup for openai calls. Don't forget .env in FastAPI root.
+load_dotenv()
+
 openai_provider = OpenAIProvider(api_key=os.getenv("OPENAI_API_KEY"))
-model = OpenAIModel(model_name="gpt-4o", provider=openai_provider)
+model = OpenAIModel(model_name="gpt-5", provider=openai_provider)  # ensure this model exists
 agent = Agent(model)
 
-# Get the filename of the latest file in /obs
+# Get latest OBS
 def latest_obs_on_file() -> str:
     list_of_files = glob.glob("./obs/*")
+    if not list_of_files:
+        raise FileNotFoundError("No files in ./obs")
     latest_file = max(list_of_files, key=os.path.getctime)
     return latest_file
-   
-app = FastAPI()
 
-# http://triathlon.itit.gu.se:8001 eller
-# http://localhost:8001
+# Upload OBS to LLM
+async def obs_upload():
+    try:
+        path = latest_obs_on_file()
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    with open(path, "rb") as f:
+        data = f.read()
+
+    result = await agent.run([
+        "Describe this image",
+        BinaryContent(data=data, media_type="image/png"),
+    ])
+    return result
+
+app = FastAPI()
 
 # Test
 @app.get("/", response_model=Actions)
@@ -36,21 +49,30 @@ async def root():
     response.right = True
     return response
 
-# Send POV to LLM for description
+# Test
 @app.get("/llm")
 async def llm():
-    result = await agent.run('What it the capital of Sweden?')  
+    result = await agent.run("What is the capital of Sweden?")
     return {"answer": result.output}
 
-# Upload POV-image (assumes png) as OBS
+# Send latest OBS to LLM for description
+@app.get("/send")
+async def send():
+    result = await obs_upload()
+    return {"answer": result.output}
+
+# Get POV and save it as obs
 @app.post("/obs")
 async def uploadfile(file: UploadFile):
-    try:        
-        timestamp = time.strftime('%Y-%m-%d_%H.%M')
-        filename = timestamp + ".png"
-        file_path = f"obs/{filename}"    
+    try:
+        os.makedirs("obs", exist_ok=True)
+        timestamp = time.strftime("%Y-%m-%d_%H.%M")
+        file_path = f"obs/{timestamp}.png"
+        contents = await file.read()
         with open(file_path, "wb") as f:
-            f.write(file.file.read())
-            return {"message": "obs saved successfully"}
+            f.write(contents)
+        return {"message": "obs saved successfully"}
     except Exception as e:
         print("message:", e.args)
+        return {"message": "failed to save obs"}
+

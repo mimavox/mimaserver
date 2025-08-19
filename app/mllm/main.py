@@ -8,7 +8,7 @@ load_dotenv()
 
 # Working setup for openai calls. Don't forget .env in FastAPI root.
 openai_provider = OpenAIProvider(api_key=os.getenv("OPENAI_API_KEY"))
-model = OpenAIModel(model_name="gpt-4o", provider=openai_provider)
+model = OpenAIModel(model_name="gpt-5", provider=openai_provider)
 agent = Agent(model)
    
 app = FastAPI()
