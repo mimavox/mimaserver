@@ -3,6 +3,8 @@ import glob
 import os
 
 from fastapi import FastAPI, UploadFile, HTTPException
+from pyvis.network import Network
+import components
 from pydantic_ai import Agent, BinaryContent
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
@@ -42,6 +44,8 @@ async def obs_upload():
 
 app = FastAPI()
 
+
+
 # Test
 @app.get("/", response_model=Actions)
 async def root():
@@ -49,6 +53,25 @@ async def root():
     response.right = True
     return response
 
+# Get all available modules for the UI
+@app.get("/available-modules")
+async def available_modules():
+    pass
+
+# Update cog_model according ti UI modeling
+@app.post("/update-model")
+async def update_model():
+    pass
+
+# Send current POV and run the model with incoming POV as OBS
+@app.post("/run-model")
+async def run_model():
+    pass
+
+
+
+
+# DEPRECEATED:
 # Test
 @app.get("/llm")
 async def llm():
