@@ -7,8 +7,6 @@ def image_to_text(image):
     return text
 
 modules = {
-    "IN": ("Sensor input", "img", "img", None),
-    "OUT": ("Action output", "img", "Action", None),
-    "TtI": ("Converts text to image", "str", "img", text_to_image),
-    "ItT": ("Converts image to text", "img", "str", image_to_text)
+    "TtI": ("/tti", "Converts text to image", "str", "img", text_to_image),
+    "ItT": ("/itt", "Converts image to text", "img", "str", image_to_text)
 }
