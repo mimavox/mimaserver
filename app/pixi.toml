@@ -16,6 +16,7 @@ python-dotenv = ">=1.1.0,<2"
 python-multipart = ">=0.0.20,<0.0.21"
 pillow = ">=11.3.0,<12"
 pyvis = ">=0.3.2,<0.4"
+uvicorn = ">=0.35.0,<0.36"
 
 [pypi-dependencies]
 pydantic-ai-slim = { version = ">=0.1.6, <0.2", extras = ["openai"] }
