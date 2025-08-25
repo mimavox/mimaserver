@@ -26,7 +26,6 @@ def latest_obs_on_file() -> str:
     latest_file = max(list_of_files, key=os.path.getctime)
     return latest_file
 
-
 # Upload OBS to LLM
 async def obs_upload():
     try:
@@ -44,9 +43,6 @@ async def obs_upload():
     return result
 
 app = FastAPI()
-'''
-we
-'''
 
 # Test
 @app.get("/", response_model=Actions)
