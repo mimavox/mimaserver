@@ -1,22 +1,36 @@
 import time
 import glob
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, UploadFile, HTTPException
-from pyvis.network import Network
-import components
 from pydantic_ai import Agent, BinaryContent
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from dotenv import load_dotenv
 
-from actions import *
+from actions import Actions
+from database.connect import connect, disconnect, generate
+import database.models
 
 load_dotenv()
 
 openai_provider = OpenAIProvider(api_key=os.getenv("OPENAI_API_KEY"))
-model = OpenAIModel(model_name="gpt-5", provider=openai_provider)  # ensure this model exists
+model = OpenAIModel(model_name="gpt-5", provider=openai_provider)
 agent = Agent(model)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await connect()
+    await generate()
+    try:
+        yield
+    finally:
+        # Shutdown
+        await disconnect()
+
+app = FastAPI(lifespan=lifespan)
 
 # Get latest OBS
 def latest_obs_on_file() -> str:
@@ -32,31 +46,28 @@ async def obs_upload():
         path = latest_obs_on_file()
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
-
     with open(path, "rb") as f:
         data = f.read()
-
     result = await agent.run([
         "Describe this image",
         BinaryContent(data=data, media_type="image/png"),
     ])
     return result
 
-app = FastAPI()
-
 # Test
-@app.get("/", response_model=Actions)
+@app.get("/")
 async def root():
-    response = Actions()
-    response.right = True
-    return response
+    user1 = await database.models.User.create(user_name="Andreas")
+    user1.user_name = "Kalle"
+    await user1.save()
+    return {"user_name": user1.user_name}
 
 # Get all available modules for the UI
 @app.get("/available-modules")
 async def available_modules():
     pass
 
-# Update cog_model according ti UI modeling
+# Update cog_model according to UI modeling
 @app.post("/update-model")
 async def update_model():
     pass
@@ -66,23 +77,17 @@ async def update_model():
 async def run_model():
     pass
 
-
-
-
-# DEPRECEATED:
-# Test
+# DEPRECATED:
 @app.get("/llm")
 async def llm():
     result = await agent.run("What is the capital of Sweden?")
     return {"answer": result.output}
 
-# Send latest OBS to LLM for description
 @app.get("/send")
 async def send():
     result = await obs_upload()
     return {"answer": result.output}
 
-# Get POV and save it as obs
 @app.post("/obs")
 async def uploadfile(file: UploadFile):
     try:
