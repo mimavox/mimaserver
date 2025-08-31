@@ -4,6 +4,10 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, UploadFile, HTTPException
+
+from pyvis.network import Network
+import components
+
 from pydantic_ai import Agent, BinaryContent
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
@@ -11,7 +15,7 @@ from dotenv import load_dotenv
 
 from actions import Actions
 from database.connect import connect, disconnect, generate
-import database.models
+import database.models as db
 
 load_dotenv()
 
@@ -54,11 +58,15 @@ async def obs_upload():
     ])
     return result
 
+# ----------------- Routes -----------------
+
 # Test
 @app.get("/")
 async def root():
-    user1 = await database.models.User.create(user_name="Andreas")
-    user1.user_name = "Kalle"
+    user1 = await db.User.create(user_name="Test")
+    # user1 = await db.User.get(name="Andreas")
+    
+    user1.user_name = "Again"
     await user1.save()
     return {"user_name": user1.user_name}
 
