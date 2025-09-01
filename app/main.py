@@ -6,22 +6,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, HTTPException
 
 from pyvis.network import Network
-import components
-
-from pydantic_ai import Agent, BinaryContent
-from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.providers.openai import OpenAIProvider
-from dotenv import load_dotenv
+import cog_graphs.components as components
 
 from actions import Actions
 from database.connect import connect, disconnect, generate
 import database.models as db
-
-load_dotenv()
-
-openai_provider = OpenAIProvider(api_key=os.getenv("OPENAI_API_KEY"))
-model = OpenAIModel(model_name="gpt-5", provider=openai_provider)
-agent = Agent(model)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -59,19 +48,6 @@ def latest_obs_on_disk() -> str:
     latest_file = max(list_of_files, key=os.path.getctime)
     return latest_file
 
-# Read OBS from disk and upload to LLM
-async def obs_upload():
-    try:
-        path = latest_obs_on_file()
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    with open(path, "rb") as f:
-        data = f.read()
-    result = await agent.run([
-        "Describe this image",
-        BinaryContent(data=data, media_type="image/png"),
-    ])
-    return result
 
 # ----------------- Routes -----------------
 
@@ -83,12 +59,14 @@ async def root():
     
     user1.user_name = "Again"
     await user1.save()
+    
     return {"user_name": user1.user_name}
 
 # Get all available modules for the UI
 @app.get("/modules")
 async def available_modules():
-    pass
+    return components.modules
+    
 
 # Login with posted credentials
 @app.post("/login")
@@ -113,9 +91,18 @@ async def run(file: UploadFile, name: str):
         # Retrive cog graph "name"
         # Run cog graph with OBS from latest_obs_on_disk()
         # Return result
-        pass
+        
+        # Use a component function:
+        # print(components.modules["TtI"][3]("sample text"))
+        try:
+            path = latest_obs_on_disk()
+            result = await components.modules["ItT"][3](path)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
     else:
-        return {"message": "failed to save obs"}
+        result = {"message": "failed to save obs"}
+    
+    return {"answer": result}
 
 
 
