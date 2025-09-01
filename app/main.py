@@ -36,15 +36,30 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Get latest OBS
-def latest_obs_on_file() -> str:
+# Save OBS to disk
+def save_obs_to_disk(file: UploadFile) -> str:
+    try:
+        os.makedirs("obs", exist_ok=True)
+        timestamp = time.strftime("%Y-%m-%d_%H.%M")
+        file_path = f"obs/{timestamp}.png"
+        contents = file.file.read()
+        with open(file_path, "wb") as f:
+            f.write(contents)
+        return "ok"
+    except Exception as e:
+        print("message:", e.args)
+        return "error"
+        #raise HTTPException(status_code=500, detail="Failed to save OBS")
+
+# Get latest OBS from disk
+def latest_obs_on_disk() -> str:
     list_of_files = glob.glob("./obs/*")
     if not list_of_files:
         raise FileNotFoundError("No files in ./obs")
     latest_file = max(list_of_files, key=os.path.getctime)
     return latest_file
 
-# Upload OBS to LLM
+# Read OBS from disk and upload to LLM
 async def obs_upload():
     try:
         path = latest_obs_on_file()
@@ -71,19 +86,40 @@ async def root():
     return {"user_name": user1.user_name}
 
 # Get all available modules for the UI
-@app.get("/available-modules")
+@app.get("/modules")
 async def available_modules():
     pass
 
-# Update cog_model according to UI modeling
-@app.post("/update-model")
-async def update_model():
+# Login with posted credentials
+@app.post("/login")
+async def login():
     pass
 
-# Send current POV and run the model with incoming POV as OBS
-@app.post("/run-model")
-async def run_model():
+# Load cog graph "name"
+@app.get("/load/{name}")
+async def load(name: str):
     pass
+
+# Save posted cog graph "name" (create if not exists)
+@app.post("/save/{name}")
+async def save(name: str):
+    pass
+
+# Run cog graph "name" with posted POV
+@app.post("/run/{name}")
+async def run(file: UploadFile, name: str):
+    result = save_obs_to_disk(file)
+    if result != "error":
+        # Retrive cog graph "name"
+        # Run cog graph with OBS from latest_obs_on_disk()
+        # Return result
+        pass
+    else:
+        return {"message": "failed to save obs"}
+
+
+
+        
 
 # DEPRECATED:
 @app.get("/llm")

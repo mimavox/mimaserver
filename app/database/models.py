@@ -4,9 +4,9 @@ from tortoise import fields
 class User(Model):
     id = fields.IntField(pk=True)
     user_name = fields.CharField(max_length=255)
-    cog_models = fields.ReverseRelation["CogModel"]
+    cog_models = fields.ReverseRelation["CogGraph"]
 
-class CogModel(Model):
+class CogGraph(Model):
     id = fields.IntField(pk=True)
     model_name = fields.CharField(max_length=255)
     cog_graph = fields.JSONField()
