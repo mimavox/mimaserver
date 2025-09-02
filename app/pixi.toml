@@ -22,4 +22,6 @@ python = ">=3.12.11,<3.14"
 
 [pypi-dependencies]
 pydantic-ai-slim = { version = ">=0.1.6, <0.2", extras = ["openai"] }
-# pylint = ">=3.3.6,<4"
+passlib = ">=1.7,<2"
+bcrypt = ">=4,<5"
+PyJWT = ">=2.9,<3"

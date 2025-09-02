@@ -2,8 +2,9 @@ import time
 import glob
 import os
 from contextlib import asynccontextmanager
+from typing import List
 
-from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi import FastAPI, UploadFile, HTTPException, Depends, status
 
 from pyvis.network import Network
 import cog_graphs.components as components
@@ -11,16 +12,18 @@ import cog_graphs.components as components
 from actions import Actions
 from database.connect import connect, disconnect, generate
 import database.models as db
+from app.session.auth import get_password_hash, verify_password, create_access_token, get_current_user
+from app.session.schemas import UserCreate, LoginRequest, Token
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    # Startup: init DB and create tables
     await connect()
     await generate()
     try:
         yield
     finally:
-        # Shutdown
+        # Shutdown: close DB
         await disconnect()
 
 app = FastAPI(lifespan=lifespan)
@@ -49,9 +52,9 @@ def latest_obs_on_disk() -> str:
     return latest_file
 
 
-# ----------------- Routes -----------------
+# ----------------- Auth routes -----------------
 
-# Test
+# Test (no auth)
 @app.get("/")
 async def root():
     user1 = await db.User.create(user_name="Test")
@@ -62,74 +65,65 @@ async def root():
     
     return {"user_name": user1.user_name}
 
-# Get all available modules for the UI
+# Create user (no auth)
+@app.post("/create", status_code=status.HTTP_201_CREATED)
+async def create_user(payload: UserCreate):
+    if await db.User.get_or_none(user_name=payload.user_name):
+        raise HTTPException(status_code=400, detail="Username already exists")
+    hashed = get_password_hash(payload.password)
+    await db.User.create(user_name=payload.user_name, hashed_password=hashed)
+    return {"ok": True}
+
+@app.post("/login", response_model=Token)
+async def login(payload: LoginRequest):
+    user = await db.User.get_or_none(user_name=payload.user_name)
+    if not user or not verify_password(payload.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    token = create_access_token(subject=user.user_name)
+    return {"access_token": token, "token_type": "bearer"}
+
+# List available modules (protected)
 @app.get("/modules")
-async def available_modules():
+async def available_modules(current_user: db.User = Depends(get_current_user)):
     return components.modules
-    
 
-# Login with posted credentials
-@app.post("/login")
-async def login():
-    pass
-
-# Load cog graph "name"
+# Load cog graph "name" (protected)
 @app.get("/load/{name}")
-async def load(name: str):
-    pass
+async def load(name: str, current_user: db.User = Depends(get_current_user)):
+    # Example: use current_user to scope data
+    # graph = await db.CogModel.get_or_none(model_name=name, owner=current_user)
+    # if not graph:
+    #     raise HTTPException(status_code=404, detail="Graph not found")
+    return {"name": name, "owner": current_user.user_name}
 
-# Save posted cog graph "name" (create if not exists)
+# Save posted cog graph "name" (protected)
 @app.post("/save/{name}")
-async def save(name: str):
-    pass
+async def save(name: str, current_user: db.User = Depends(get_current_user)):
+    # Example:
+    # payload = await request.json()
+    # graph = await db.CogModel.update_or_create(
+    #     defaults={"cog_graph": payload},
+    #     model_name=name,
+    #     owner=current_user,
+    # )
+    return {"saved": True, "name": name, "owner": current_user.user_name}
 
-# Run cog graph "name" with posted POV
+# Run cog graph "name" with posted POV (protected)
 @app.post("/run/{name}")
-async def run(file: UploadFile, name: str):
+async def run(
+    file: UploadFile,
+    name: str,
+    current_user: db.User = Depends(get_current_user),
+):
     result = save_obs_to_disk(file)
     if result != "error":
-        # Retrive cog graph "name"
-        # Run cog graph with OBS from latest_obs_on_disk()
-        # Return result
-        
-        # Use a component function:
-        # print(components.modules["TtI"][3]("sample text"))
         try:
             path = latest_obs_on_disk()
+            # Example: call a component
             result = await components.modules["ItT"][3](path)
         except FileNotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e))
     else:
         result = {"message": "failed to save obs"}
-    
-    return {"answer": result}
 
-
-
-        
-
-# DEPRECATED:
-@app.get("/llm")
-async def llm():
-    result = await agent.run("What is the capital of Sweden?")
-    return {"answer": result.output}
-
-@app.get("/send")
-async def send():
-    result = await obs_upload()
-    return {"answer": result.output}
-
-@app.post("/obs")
-async def uploadfile(file: UploadFile):
-    try:
-        os.makedirs("obs", exist_ok=True)
-        timestamp = time.strftime("%Y-%m-%d_%H.%M")
-        file_path = f"obs/{timestamp}.png"
-        contents = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(contents)
-        return {"message": "obs saved successfully"}
-    except Exception as e:
-        print("message:", e.args)
-        return {"message": "failed to save obs"}
-
+    return {"answer": result, "owner": current_user.user_name}
