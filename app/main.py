@@ -12,8 +12,8 @@ import cog_graphs.components as components
 from actions import Actions
 from database.connect import connect, disconnect, generate
 import database.models as db
-from app.session.auth import get_password_hash, verify_password, create_access_token, get_current_user
-from app.session.schemas import UserCreate, LoginRequest, Token
+from session.auth import get_password_hash, verify_password, create_access_token, get_current_user
+from session.schemas import UserCreate, LoginRequest, Token
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -84,13 +84,21 @@ async def login(payload: LoginRequest):
 
 # List available modules (protected)
 @app.get("/modules")
-async def available_modules(current_user: db.User = Depends(get_current_user)):
+async def modules(current_user: db.User = Depends(get_current_user)):
     return components.modules
+
+# Get user profile
+@app.get("/profile")
+async def profile(current_user: db.User = Depends(get_current_user)):
+    print(current_user)
+    return current_user
+
 
 # Load cog graph "name" (protected)
 @app.get("/load/{name}")
 async def load(name: str, current_user: db.User = Depends(get_current_user)):
     # Example: use current_user to scope data
+    # The get_or_none() method in Tortoise ORM is used to retrieve a single object from the database. If no object matches the query, it returns None instead of raising an error. This is a safer alternative to .get() when you are unsure if a record exists.
     # graph = await db.CogModel.get_or_none(model_name=name, owner=current_user)
     # if not graph:
     #     raise HTTPException(status_code=404, detail="Graph not found")
@@ -100,6 +108,7 @@ async def load(name: str, current_user: db.User = Depends(get_current_user)):
 @app.post("/save/{name}")
 async def save(name: str, current_user: db.User = Depends(get_current_user)):
     # Example:
+    # The update_or_create method in Tortoise ORM is a convenience function used to either update an existing object or create a new one if it doesn't exist.
     # payload = await request.json()
     # graph = await db.CogModel.update_or_create(
     #     defaults={"cog_graph": payload},
