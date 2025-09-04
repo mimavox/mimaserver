@@ -15,6 +15,7 @@ import database.models as db
 from session.auth import get_password_hash, verify_password, create_access_token, get_current_user
 from session.schemas import UserCreate, LoginRequest, Token
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: init DB and create tables
