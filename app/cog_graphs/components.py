@@ -21,6 +21,8 @@ def get_agent() -> Agent:
         _agent = Agent(model)
     return _agent
 
+# ------------ Modules ------------
+
 def text_to_image(text: str) -> str:
     image = text + "image"
     return image
@@ -33,6 +35,7 @@ async def image_to_text(img_path: str) -> str:
         BinaryContent(data=data, media_type="image/png"),
     ])
     return result.output
+
 
 modules = {
     "TtI": ("Converts text to image", "str", "img", text_to_image),
