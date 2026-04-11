@@ -166,7 +166,7 @@ async def save_graph(name: str, graph_json: str, current_user: User = Depends(ge
             session.refresh(graph)
     return {"message": "Graph saved", "graph": graph.graph_json}
 
-# Run GogGraph "name" with posted png file as input for the first module. The png file is saved to disk and the path is sent as input to the first module.
+# Run CogGraph "name" with posted POV png
 @app.post("/run/{name}")
 async def run_graph(name: str, file: UploadFile, current_user: User = Depends(get_current_user)):
     # Save the file to disk and get the path
