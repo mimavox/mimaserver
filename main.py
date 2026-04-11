@@ -11,6 +11,7 @@ from sqlmodel import Session, select
 from database.connect import create_engine
 from database.connect import create_db_and_tables
 from database.models import CogGraph, User
+from sqlmodel import Session, select
 
 engine = create_engine(os.getenv("DATABASE_URL"))
 

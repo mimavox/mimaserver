@@ -1,3 +1,4 @@
+# SQLmodel is used as ORM
 from sqlmodel import Field, Session, SQLModel, Text
 
 class User(SQLModel, table=True):
