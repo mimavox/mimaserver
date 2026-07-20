@@ -24,6 +24,8 @@ def get_agent() -> Agent:
 
 # ------------ Modules ------------
 
+# In Godot, these are defined in popup_window.gd together with properties for PopupWindow.
+
 def text_to_image(text: str) -> str:
     image = text + "image"
     return image

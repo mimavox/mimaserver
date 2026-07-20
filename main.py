@@ -6,6 +6,7 @@ import time
 
 import networkx as nx
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
 from sqlmodel import Session, select
 from session.auth import get_password_hash, verify_password, create_access_token, get_current_user
 import cog_graphs.components as components
@@ -15,7 +16,6 @@ from database.connect import create_engine
 from database.connect import create_db_and_tables
 from database.models import CogGraph, User
 
-
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
@@ -23,11 +23,17 @@ class TokenResponse(BaseModel):
 # DATABASE_URL is set as env variable in fastapi cloud
 engine = create_engine(os.getenv("DATABASE_URL"))
 
-app = FastAPI()
-
-@app.on_event("startup")
-def on_startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup logic goes here
     create_db_and_tables(engine)
+    try:
+        yield
+    finally:
+        # shutdown logic (if needed) goes here
+        pass
+
+app = FastAPI(lifespan=lifespan)
 
 # Save OBS to disk
 def save_obs_to_disk(file: UploadFile) -> str:
@@ -52,8 +58,6 @@ def latest_obs_on_disk() -> str:
     latest_file = max(list_of_files, key=os.path.getctime)
     return latest_file
 
-
-# ----------------- Public routes -----------------
 @app.get("/")
 def main():
     return {"message": "Hello World"}
@@ -61,7 +65,7 @@ def main():
 # Mock test (no auth)
 @app.get("/mock")
 async def mock():
-    # Get user "test". Create if it doesn't exist.   
+    # Get user "test". Create if it doesn't exist.
     with Session(engine) as session:
         statement = select(User).where(User.user_name == "test")
         user1 = session.exec(statement).first()
@@ -70,11 +74,11 @@ async def mock():
             session.add(user1)
             session.commit()
             session.refresh(user1)
-        
+
         # Build a graph.
         DG = nx.DiGraph()
         DG.add_nodes_from(["A", "B", "C"])
-        DG.add_edges_from([("A", "B"), ("B", "C")]) 
+        DG.add_edges_from([("A", "B"), ("B", "C")])
         DG_data = nx.node_link_data(DG, nodes="nodes", edges="edges")
 
         # Ensure a graph exists for the user. Create if it doesn't exist.
@@ -85,9 +89,12 @@ async def mock():
             session.add(graph1)
             session.commit()
             session.refresh(graph1)
-    
+
     print("graph1:", graph1)
     return {"message": "Mock data created", "graph": graph1.graph_json}
+
+
+# ----------------- Public (no auth) -----------------
 
 # Create user (no auth)
 @app.post("/create", status_code=status.HTTP_201_CREATED)
@@ -106,7 +113,6 @@ async def create_user(user_name: str, password: str):
         session.refresh(user1)
     return {"message": "User created"}
 
-# Login (no auth)
 @app.post("/login", response_model=TokenResponse)
 async def login(user_name: str, password: str):
     with Session(engine) as session:
@@ -119,8 +125,10 @@ async def login(user_name: str, password: str):
     token = create_access_token(subject=user1.user_name)
     return {"access_token": token, "token_type": "bearer"}
 
-# ----------------- Auth routes -----------------
-# Return owned CogGRaphs for the current user
+
+# ----------------- Protected (auth) -----------------
+
+# [GET] Return owned CogGRaphs for the current user
 @app.get("/graphs")
 async def graphs(current_user: User = Depends(get_current_user)):
     with Session(engine) as session:
@@ -128,17 +136,17 @@ async def graphs(current_user: User = Depends(get_current_user)):
         graphs = session.exec(statement).all()
     return {"graphs": graphs}
 
-# Get available modules
+# [GET] Return available modules
 @app.get("/modules")
 async def modules(current_user: User = Depends(get_current_user)):
     return {"modules": components.modules}
 
-# Get user details
+# [GET] Return user details
 @app.get("/profile")
 async def profile(current_user: User = Depends(get_current_user)):
     return {"user_name": current_user.user_name, "id": current_user.id}
 
-# Get CogGraph "name" for the current user
+# [GET] Return CogGraph "name" for the current user
 @app.get("/load/{name}")
 async def load_graph(name: str, current_user: User = Depends(get_current_user)):
     with Session(engine) as session:
@@ -148,7 +156,7 @@ async def load_graph(name: str, current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Graph not found")
     return {"graph": graph.graph_json}
 
-# Save posted GogGraph "name" for the current user
+# [POST] Save posted GogGraph "name" for the current user
 @app.post("/save/{name}")
 async def save_graph(name: str, graph_json: str, current_user: User = Depends(get_current_user)):
     with Session(engine) as session:
@@ -166,7 +174,7 @@ async def save_graph(name: str, graph_json: str, current_user: User = Depends(ge
             session.refresh(graph)
     return {"message": "Graph saved", "graph": graph.graph_json}
 
-# Run CogGraph "name" with posted POV png
+# [POST] Run CogGraph "name" with posted POV png
 @app.post("/run/{name}")
 async def run_graph(name: str, file: UploadFile, current_user: User = Depends(get_current_user)):
     # Save the file to disk and get the path

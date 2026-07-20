@@ -1,13 +1,13 @@
 [project]
 name = "mimaserver"
 version = "0.1.0"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     "bcrypt>=5.0.0",
-    "fastapi[standard]>=0.135.3",
+    "fastapi[standard]>=0.136.0",
     "networkx>=3.6.1",
     "psycopg2-binary>=2.9.11",
-    "pydantic>=2.12.5",
-    "pydantic-ai>=1.80.0",
+    "pydantic>=2.13.2",
+    "pydantic-ai>=1.84.1",
     "sqlmodel>=0.0.38",
 ]

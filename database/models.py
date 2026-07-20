@@ -9,5 +9,6 @@ class User(SQLModel, table=True):
 class CogGraph(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     model_name: str = Field(index=True)
-    graph_json: str = Field(default="{}", sa_column=Text)  # Store the graph as a JSON string
+    # Store the graph as a JSON string
+    graph_json: str = Field(default="{}", sa_column=Text)  
     owner_id: int = Field(foreign_key="user.id")
