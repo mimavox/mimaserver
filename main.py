@@ -1,21 +1,26 @@
-from fastapi import FastAPI, UploadFile, HTTPException, Depends, status
 import glob
-import os
-
-import time
 import json
-import networkx as nx
-from typing import Dict, Any
-from pydantic import BaseModel
+import os
+import time
 from contextlib import asynccontextmanager
+from typing import Any, Dict
+
+import networkx as nx
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, status
+from pydantic import BaseModel
 from sqlmodel import Session, select
-from session.auth import get_password_hash, verify_password, create_access_token, get_current_user
-import cog_graphs.components as components
+
+from cog_graphs import components
 
 # Database connection
-from database.connect import create_engine
-from database.connect import clear_db_and_tables
+from database.connect import clear_db_and_tables, create_engine
 from database.models import CogGraph, User
+from session.auth import (
+    create_access_token,
+    get_current_user,
+    get_password_hash,
+    verify_password,
+)
 
 # ----------------- Pydantic Models -----------------
 
@@ -33,7 +38,7 @@ class UserLogin(BaseModel):
 
 class GraphSavePayload(BaseModel):
     # Accept a standard JSON object instead of a string
-    graph_json: Dict[str, Any]
+    graph_json: dict[str, Any]
 
 # ---------------------------------------------------
 
