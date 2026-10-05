@@ -36,7 +36,7 @@ class UserLogin(BaseModel):
     user_name: str
     password: str
 
-class GraphSavePayload(BaseModel):
+class GraphPayload(BaseModel):
     # Accept a standard JSON object instead of a string
     graph_json: dict[str, Any]
 
@@ -146,6 +146,39 @@ async def mock():
     print("graph1:", graph1)
     return {"message": "Mock data created", "graph": graph1.graph_json}
 
+# Test route to submit graph without login
+@app.post("/test/")
+async def test(payload: GraphPayload):
+
+    # json_string = json.dumps(payload.graph_json)
+    # name = "test_graph"
+    print("hej")
+    '''
+    # Get user "test". Create if it doesn't exist.
+    with Session(engine) as session:
+        statement = select(User).where(User.user_name == "test")
+        current_user = session.exec(statement).first()
+        if not current_user:
+            current_user = User(user_name="test", password="test")
+            session.add(current_user)
+            session.commit()
+            session.refresh(current_user)
+        statement = select(CogGraph).where(CogGraph.owner_id == current_user.id, CogGraph.model_name == name)
+        graph = session.exec(statement).first()
+        if graph:
+            graph.graph_json = json_string
+            session.add(graph)
+            session.commit()
+            session.refresh(graph)
+        else:
+            assert current_user.id is not None
+            graph = CogGraph(model_name=name, graph_json=json_string, owner_id=current_user.id)
+            session.add(graph)
+            session.commit()
+            session.refresh(graph)
+        return {"message": "Graph saved", "graph": graph.graph_json}
+    '''
+    return {"RECEIVED": payload}
 
 # ----------------- Public (no auth) -----------------
 
@@ -208,7 +241,7 @@ async def load_graph(name: str, current_user: User = Depends(get_current_user)):
 
 # [POST] Save posted GogGraph "name" for the current user (assume correct incoming format)
 @app.post("/save/{name}")
-async def save_graph(name: str, payload: GraphSavePayload, current_user: User = Depends(get_current_user)):
+async def save_graph(name: str, payload: GraphPayload, current_user: User = Depends(get_current_user)):
     # Convert the clean dictionary into a string for the database
     json_string = json.dumps(payload.graph_json)
 
