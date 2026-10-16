@@ -1,5 +1,6 @@
 import glob
 import json
+import logging
 import os
 import time
 from contextlib import asynccontextmanager
@@ -12,6 +13,15 @@ from sqlmodel import Session, select
 
 from cog_graphs import components
 
+# Logger
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(level=LOG_LEVEL)
+logger = logging.getLogger(__name__)
+lvl = getattr(logging, LOG_LEVEL, logging.INFO)
+logging.getLogger("uvicorn").setLevel(lvl)
+logging.getLogger("uvicorn.error").setLevel(lvl)
+logging.getLogger("uvicorn.access").setLevel(lvl)
+
 # Database connection
 from database.connect import clear_db_and_tables, create_engine
 from database.models import CogGraph, User
@@ -22,9 +32,8 @@ from session.auth import (
     verify_password,
 )
 
+
 # ----------------- Pydantic Models -----------------
-
-
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
@@ -46,7 +55,6 @@ class GraphPayload(BaseModel):
 
 
 # ---------------------------------------------------
-
 
 # DATABASE_URL is set as env variable in fastapi cloud
 engine = create_engine(os.getenv("DATABASE_URL"))
@@ -127,6 +135,9 @@ def get_graph(name: str, current_user: User):
 
 @app.get("/")
 def main():
+    logger.debug("This is a debug message.")
+    logger.info("This is an info message.")
+
     return {"message": "Hello World"}
 
 
@@ -169,9 +180,9 @@ async def mock():
 @app.post("/test/")
 async def test(payload: GraphPayload):
 
-    # json_string = json.dumps(payload.graph_json)
+    json_string = json.dumps(payload.graph_json)
     # name = "test_graph"
-    print("hej")
+    logger.info(payload)
 
     # # Get user "test". Create if it doesn't exist.
     # with Session(engine) as session:
@@ -197,7 +208,8 @@ async def test(payload: GraphPayload):
     #         session.refresh(graph)
     #     return {"message": "Graph saved", "graph": graph.graph_json}
 
-    return {"RECEIVED": payload}
+    # return {"RECEIVED": payload}
+    return {"message": "Hej Test"}
 
 
 # ----------------- Public (no auth) -----------------
