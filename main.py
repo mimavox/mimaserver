@@ -24,27 +24,33 @@ from session.auth import (
 
 # ----------------- Pydantic Models -----------------
 
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
+
 
 class UserCreate(BaseModel):
     user_name: str
     password: str
 
+
 class UserLogin(BaseModel):
     user_name: str
     password: str
 
+
 class GraphPayload(BaseModel):
     # Accept a standard JSON object instead of a string
     graph_json: dict[str, Any]
+
 
 # ---------------------------------------------------
 
 
 # DATABASE_URL is set as env variable in fastapi cloud
 engine = create_engine(os.getenv("DATABASE_URL"))
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -55,7 +61,9 @@ async def lifespan(app: FastAPI):
         # shutdown logic (if needed) goes here
         pass
 
+
 app = FastAPI(lifespan=lifespan)
+
 
 # Save OBS to disk
 def save_obs_to_disk(file: UploadFile) -> str:
@@ -70,7 +78,8 @@ def save_obs_to_disk(file: UploadFile) -> str:
     except Exception as e:
         print("message:", e.args)
         return "error"
-        #raise HTTPException(status_code=500, detail="Failed to save OBS")
+        # raise HTTPException(status_code=500, detail="Failed to save OBS")
+
 
 # Get latest OBS from disk
 def latest_obs_on_disk() -> str:
@@ -79,6 +88,7 @@ def latest_obs_on_disk() -> str:
         raise FileNotFoundError("No files in ./obs")
     latest_file = max(list_of_files, key=os.path.getctime)
     return latest_file
+
 
 def get_graph(name: str, current_user: User):
     """Helper: fetch a CogGraph record owned by `current_user` with the given `name`.
@@ -92,7 +102,9 @@ def get_graph(name: str, current_user: User):
         raise HTTPException(status_code=500, detail="Authenticated user has no id")
 
     with Session(engine) as session:
-        statement = select(CogGraph).where(CogGraph.owner_id == owner_id, CogGraph.model_name == name)
+        statement = select(CogGraph).where(
+            CogGraph.owner_id == owner_id, CogGraph.model_name == name
+        )
         graph_record = session.exec(statement).first()
     if not graph_record:
         raise HTTPException(status_code=404, detail="Graph not found")
@@ -102,10 +114,13 @@ def get_graph(name: str, current_user: User):
         parsed = json.loads(graph_record.graph_json)
     except (TypeError, json.JSONDecodeError):
         import ast
+
         try:
             parsed = ast.literal_eval(graph_record.graph_json)
         except Exception:
-            raise HTTPException(status_code=500, detail="Stored graph is not valid JSON")
+            raise HTTPException(
+                status_code=500, detail="Stored graph is not valid JSON"
+            )
 
     return graph_record, parsed
 
@@ -113,6 +128,7 @@ def get_graph(name: str, current_user: User):
 @app.get("/")
 def main():
     return {"message": "Hello World"}
+
 
 # Mock test (no auth)
 @app.get("/mock")
@@ -138,13 +154,16 @@ async def mock():
         graph1 = session.exec(statement).first()
         if not graph1:
             assert user1.id is not None
-            graph1 = CogGraph(model_name="test_model", graph_json=str(DG_data), owner_id=user1.id)
+            graph1 = CogGraph(
+                model_name="test_model", graph_json=str(DG_data), owner_id=user1.id
+            )
             session.add(graph1)
             session.commit()
             session.refresh(graph1)
 
     print("graph1:", graph1)
     return {"message": "Mock data created", "graph": graph1.graph_json}
+
 
 # Test route to submit graph without login
 @app.post("/test/")
@@ -153,34 +172,36 @@ async def test(payload: GraphPayload):
     # json_string = json.dumps(payload.graph_json)
     # name = "test_graph"
     print("hej")
-    '''
-    # Get user "test". Create if it doesn't exist.
-    with Session(engine) as session:
-        statement = select(User).where(User.user_name == "test")
-        current_user = session.exec(statement).first()
-        if not current_user:
-            current_user = User(user_name="test", password="test")
-            session.add(current_user)
-            session.commit()
-            session.refresh(current_user)
-        statement = select(CogGraph).where(CogGraph.owner_id == current_user.id, CogGraph.model_name == name)
-        graph = session.exec(statement).first()
-        if graph:
-            graph.graph_json = json_string
-            session.add(graph)
-            session.commit()
-            session.refresh(graph)
-        else:
-            assert current_user.id is not None
-            graph = CogGraph(model_name=name, graph_json=json_string, owner_id=current_user.id)
-            session.add(graph)
-            session.commit()
-            session.refresh(graph)
-        return {"message": "Graph saved", "graph": graph.graph_json}
-    '''
+
+    # # Get user "test". Create if it doesn't exist.
+    # with Session(engine) as session:
+    #     statement = select(User).where(User.user_name == "test")
+    #     current_user = session.exec(statement).first()
+    #     if not current_user:
+    #         current_user = User(user_name="test", password="test")
+    #         session.add(current_user)
+    #         session.commit()
+    #         session.refresh(current_user)
+    #     statement = select(CogGraph).where(CogGraph.owner_id == current_user.id, CogGraph.model_name == name)
+    #     graph = session.exec(statement).first()
+    #     if graph:
+    #         graph.graph_json = json_string
+    #         session.add(graph)
+    #         session.commit()
+    #         session.refresh(graph)
+    #     else:
+    #         assert current_user.id is not None
+    #         graph = CogGraph(model_name=name, graph_json=json_string, owner_id=current_user.id)
+    #         session.add(graph)
+    #         session.commit()
+    #         session.refresh(graph)
+    #     return {"message": "Graph saved", "graph": graph.graph_json}
+
     return {"RECEIVED": payload}
 
+
 # ----------------- Public (no auth) -----------------
+
 
 # Create user (no auth)
 @app.post("/create", status_code=status.HTTP_201_CREATED)
@@ -199,6 +220,7 @@ async def create_user(payload: UserCreate):
         session.refresh(user1)
     return {"message": "User created"}
 
+
 @app.post("/login", response_model=TokenResponse)
 async def login(payload: UserLogin):
     with Session(engine) as session:
@@ -214,6 +236,7 @@ async def login(payload: UserLogin):
 
 # ----------------- Protected (auth) -----------------
 
+
 # [GET] Return owned CogGraphs for the current user TODO: Test format of returned graphs
 @app.get("/graphs")
 async def get_all_graphs(current_user: User = Depends(get_current_user)):
@@ -222,15 +245,18 @@ async def get_all_graphs(current_user: User = Depends(get_current_user)):
         graphs = session.exec(statement).all()
     return {"graphs": graphs}
 
+
 # [GET] Return available modules TODO: Change to everyone can alway reach all modules
 @app.get("/modules")
 async def modules(current_user: User = Depends(get_current_user)):
     return {"modules": components.modules}
 
+
 # [GET] Return user details TODO: Add fields for personal data in model
 @app.get("/profile")
 async def profile(current_user: User = Depends(get_current_user)):
     return {"user_name": current_user.user_name, "id": current_user.id}
+
 
 # [GET] Return CogGraph "name" for the current user
 @app.get("/load/{name}")
@@ -239,14 +265,19 @@ async def load_graph(name: str, current_user: User = Depends(get_current_user)):
     graph_record, _ = get_graph(name, current_user)
     return {"graph": graph_record.graph_json}
 
+
 # [POST] Save posted GogGraph "name" for the current user (assume correct incoming format)
 @app.post("/save/{name}")
-async def save_graph(name: str, payload: GraphPayload, current_user: User = Depends(get_current_user)):
+async def save_graph(
+    name: str, payload: GraphPayload, current_user: User = Depends(get_current_user)
+):
     # Convert the clean dictionary into a string for the database
     json_string = json.dumps(payload.graph_json)
 
     with Session(engine) as session:
-        statement = select(CogGraph).where(CogGraph.owner_id == current_user.id, CogGraph.model_name == name)
+        statement = select(CogGraph).where(
+            CogGraph.owner_id == current_user.id, CogGraph.model_name == name
+        )
         graph = session.exec(statement).first()
         if graph:
             graph.graph_json = json_string
@@ -255,17 +286,22 @@ async def save_graph(name: str, payload: GraphPayload, current_user: User = Depe
             session.refresh(graph)
         else:
             assert current_user.id is not None
-            graph = CogGraph(model_name=name, graph_json=json_string, owner_id=current_user.id)
+            graph = CogGraph(
+                model_name=name, graph_json=json_string, owner_id=current_user.id
+            )
             session.add(graph)
             session.commit()
             session.refresh(graph)
     return {"message": "Graph saved", "graph": graph.graph_json}
 
+
 # [POST] Run CogGraph "name" with posted POV png
 # TODO: Build networkx graph from stored graph-json format.
 # TODO: Run the constructed networkx graph.
 @app.post("/run/{name}")
-async def run_graph(name: str, file: UploadFile, current_user: User = Depends(get_current_user)):
+async def run_graph(
+    name: str, file: UploadFile, current_user: User = Depends(get_current_user)
+):
     # Save incoming png to disk and get save path
     save_result = save_obs_to_disk(file)
     if save_result != "ok":
@@ -275,15 +311,12 @@ async def run_graph(name: str, file: UploadFile, current_user: User = Depends(ge
     # Fetch the record and parsed graph using the helper
     graph_record, graph = get_graph(name, current_user)
 
+    #     node_count = len(graph.get("nodes") or [])
+    #     edge_count = len(graph.get("edges") or [])
+    #     print(f"Loaded graph '{name}' for user {current_user.user_name}: nodes={node_count}, edges={edge_count}")
+    #
+    #     # Run the graph with the img_path as input for the first module
+    #     # For simplicity, we assume the first module is always "ItT" (image to text)
+    #     result = await components.image_to_text(img_path)
 
-
-    """
-    node_count = len(graph.get("nodes") or [])
-    edge_count = len(graph.get("edges") or [])
-    print(f"Loaded graph '{name}' for user {current_user.user_name}: nodes={node_count}, edges={edge_count}")
-
-    # Run the graph with the img_path as input for the first module
-    # For simplicity, we assume the first module is always "ItT" (image to text)
-    result = await components.image_to_text(img_path)
-    """
     return {"result": ""}
